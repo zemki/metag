@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+    <!-- App Info -->
+    <string name="app_name">MeTag</string>
+    
+    <!-- Login Screen -->
+    <string name="login_title">Accedi</string>
+    <string name="login_welcome">Bentornato</string>
+    <string name="login_email">Email</string>
+    <string name="login_password">Password</string>
+    <string name="login_button">Accedi</string>
+    <string name="login_forgot_password">Password dimenticata?</string>
+    <string name="login_or">OPPURE</string>
+    <string name="login_scan_qr">Scansiona codice QR</string>
+    <string name="login_error">Accesso fallito. Controlla le tue credenziali.</string>
+    <string name="offline_indicator">Lavoro offline</string>
+    
+    <!-- Validation -->
+    <string name="validation_required_fields">Compila i campi obbligatori: %s</string>
+    <string name="validation_required">obbligatorio</string>
+    <string name="validation_optional">opzionale</string>
+    
+    <!-- Navigation -->
+    <string name="nav_back">Indietro</string>
+    <string name="nav_close">Chiudi</string>
+    <string name="nav_save">Salva</string>
+    <string name="nav_cancel">Annulla</string>
+    
+    <!-- Add/Edit Entry -->
+    <string name="add_entry_title">Aggiungi Voce</string>
+    <string name="edit_entry_title">Modifica Voce</string>
+    <string name="entry_start_time">Ora di Inizio</string>
+    <string name="entry_end_time">Ora di Fine</string>
+    <string name="entry_create_button">Crea Voce</string>
+    <string name="entry_update_button">Aggiorna Voce</string>
+    <string name="entry_creating">Creazione Voce...</string>
+    <string name="entry_updating">Aggiornamento Voce...</string>
+    
+    <!-- Media/Entity -->
+    <string name="media_field">Media</string>
+    <string name="entity_field">Entità</string>
+    <string name="entity_enter">Inserisci</string>
+    <string name="entity_suggestions_show">Mostra suggerimenti</string>
+    <string name="entity_suggestions_hide">Nascondi suggerimenti</string>
+    <string name="entity_custom_note">Digita un nome personalizzato per questa voce</string>
+    
+    <!-- Audio -->
+    <string name="audio_recording">Registrazione Audio</string>
+    <string name="audio_playing">Riproduzione...</string>
+    <string name="audio_ready">Pronto</string>
+    <string name="audio_play">Riproduci</string>
+    <string name="audio_stop">Ferma</string>
+    <string name="audio_recording_duration">Registrazione %ds</string>
+    <string name="audio_recording_failed">Registrazione fallita</string>
+    <string name="audio_playback_failed">Riproduzione fallita</string>
+    <string name="audio_playing_state">Riproduzione Audio</string>
+    
+    <!-- Error Messages -->
+    <string name="error_network">Errore di rete - controlla la connessione internet</string>
+    <string name="error_authentication">Errore di autenticazione - effettua nuovamente l&#39;accesso</string>
+    <string name="error_unknown">Si è verificato un errore sconosciuto</string>
+    <string name="error_entry_create">Errore nella creazione della voce: %s</string>
+    <string name="error_entry_update">Errore nell&#39;aggiornamento della voce: %s</string>
+    <string name="error_dismiss">Tocca per chiudere</string>
+    
+    <!-- Time Picker -->
+    <string name="time_picker_start_title">Seleziona Data e Ora di Inizio</string>
+    <string name="time_picker_end_title">Seleziona Data e Ora di Fine</string>
+    <string name="time_picker_save_close">Salva e Chiudi</string>
+    
+    <!-- General -->
+    <string name="loading">Caricamento...</string>
+    <string name="retry">Riprova</string>
+    <string name="ok">OK</string>
+    <string name="yes">Sì</string>
+    <string name="no">No</string>
+    
+    <!-- Scale Input -->
+    <string name="scale_select_rating">Seleziona una valutazione</string>
+    <string name="scale_rating_format">%d / 5</string>
+    
+    <!-- Case Info -->
+    <string name="entries_title">Voci</string>
+    <string name="entries_count">%d voci</string>
+    <string name="last_day_submit">Ultimo giorno per inviare: </string>
+    
+    <!-- Language Selection -->
+    <string name="language_selection_title">Seleziona Lingua</string>
+    <string name="language_english">English</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_german">Deutsch</string>
+</resources>

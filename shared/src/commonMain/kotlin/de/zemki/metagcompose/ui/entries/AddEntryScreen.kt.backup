@@ -1,0 +1,948 @@
+package de.zemki.metagcompose.ui.entries
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.snapshots.SnapshotStateMap
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import network.chaintech.kmp_date_time_picker.ui.datetimepicker.WheelDateTimePickerView
+import network.chaintech.kmp_date_time_picker.utils.DateTimePickerView
+import network.chaintech.kmp_date_time_picker.utils.TimeFormat
+import network.chaintech.kmp_date_time_picker.utils.WheelPickerDefaults
+import network.chaintech.kmp_date_time_picker.utils.dateTimeToString
+import de.zemki.metagcompose.data.model.*
+import de.zemki.metagcompose.data.repository.EntriesRepository
+import de.zemki.metagcompose.ui.components.AudioRecordingField
+import de.zemki.metagcompose.ui.theme.MetagColors
+import de.zemki.metagcompose.util.getCurrentTimestamp
+import de.zemki.metagcompose.util.getTimestampOneHourFromNow
+import de.zemki.metagcompose.util.formatTimestampForDisplay
+import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.buildJsonArray
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddEntryScreen(
+    caseData: CaseData,
+    entriesRepository: EntriesRepository,
+    onBack: () -> Unit,
+    onEntryCreated: () -> Unit,
+    editingEntry: Entry? = null
+) {
+    var beginTime by remember { mutableStateOf(editingEntry?.begin ?: getCurrentTimestamp()) }
+    var endTime by remember { mutableStateOf(editingEntry?.end ?: getTimestampOneHourFromNow()) }
+    var selectedEntityId by remember { mutableStateOf(editingEntry?.media_id) }
+    var selectedEntityName by remember { mutableStateOf(editingEntry?.media_name ?: "") }
+    var audioData by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    
+    val coroutineScope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
+    val focusManager = LocalFocusManager.current
+    
+    // Date picker states
+    var showBeginDatePicker by remember { mutableStateOf(false) }
+    var showEndDatePicker by remember { mutableStateOf(false) }
+    
+    // Available entities from the project
+    val availableEntities = caseData.project.media ?: emptyList()
+    
+    // Parse custom inputs to check for audio fields
+    val customInputs = remember {
+        try {
+            de.zemki.metagcompose.data.model.InputFieldParser.parseCustomInputs(caseData.project.inputs)
+        } catch (e: Exception) {
+            println("Failed to parse custom inputs: ${e.message}")
+            emptyList()
+        }
+    }
+    val hasAudioInput = customInputs.any { it.getInputFieldType() == InputFieldType.AUDIO_RECORDING }
+    
+    // Track custom input values
+    val customInputValues = remember { mutableStateMapOf<String, JsonElement>() }
+    
+    // Initialize all input values from existing entry if editing
+    LaunchedEffect(editingEntry) {
+        if (editingEntry != null) {
+            val parsedInputs = editingEntry.getParsedInputs()
+            parsedInputs?.let { inputs ->
+                println("AddEntryScreen: Initializing entry values from: $inputs")
+                
+                // Initialize all custom input values
+                customInputs.forEach { inputDef ->
+                    val fieldName = inputDef.name
+                    val existingValue = inputs[fieldName]
+                    
+                    when (inputDef.getInputFieldType()) {
+                        InputFieldType.SCALE -> {
+                            if (existingValue is JsonPrimitive) {
+                                val scaleValue = existingValue.content.toIntOrNull()
+                                if (scaleValue != null && scaleValue in 1..5) {
+                                    customInputValues[fieldName] = JsonPrimitive(scaleValue)
+                                    println("AddEntryScreen: Initialized scale '$fieldName' = $scaleValue")
+                                }
+                            }
+                        }
+                        InputFieldType.TEXT -> {
+                            if (existingValue is JsonPrimitive) {
+                                customInputValues[fieldName] = existingValue
+                                println("AddEntryScreen: Initialized text '$fieldName' = '${existingValue.content}'")
+                            }
+                        }
+                        InputFieldType.ONE_CHOICE -> {
+                            if (existingValue is JsonPrimitive) {
+                                customInputValues[fieldName] = existingValue
+                                println("AddEntryScreen: Initialized choice '$fieldName' = '${existingValue.content}'")
+                            }
+                        }
+                        InputFieldType.MULTIPLE_CHOICE -> {
+                            if (existingValue is JsonArray) {
+                                customInputValues[fieldName] = existingValue
+                                println("AddEntryScreen: Initialized multiple choice '$fieldName' = $existingValue")
+                            }
+                        }
+                        InputFieldType.AUDIO_RECORDING -> {
+                            if (existingValue is JsonPrimitive) {
+                                val audioContent = existingValue.content
+                                println("AddEntryScreen: Found audio data '$fieldName', length: ${audioContent.length}")
+                                if (audioContent.isNotBlank() && audioContent.length > 10) {
+                                    audioData = audioContent
+                                    println("AddEntryScreen: Set audioData for editing")
+                                }
+                            }
+                        }
+                        else -> {}
+                    }
+                }
+            }
+        }
+    }
+    
+    // Get API version to determine entity vs media terminology
+    var apiVersion by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        apiVersion = entriesRepository.getApiVersion()
+    }
+    
+    // Extract entity name from JSON config (use "media" for v1)
+    val actualEntityName = remember(apiVersion) {
+        if (apiVersion == "v1") {
+            "media"
+        } else {
+            de.zemki.metagcompose.data.model.InputFieldParser.extractEntityName(caseData.project.inputs) 
+                ?: caseData.project.entity_name ?: "entity"
+        }
+    }
+    
+    fun createEntry() {
+        coroutineScope.launch {
+            isLoading = true
+            errorMessage = null
+            
+            val inputs = buildJsonObject {
+                // Add all custom input values
+                customInputValues.forEach { (key, value) ->
+                    put(key, value)
+                }
+                
+                // Add audio data if available
+                if (hasAudioInput && audioData != null) {
+                    // Find the audio field name from customInputs
+                    val audioFieldName = customInputs.find { 
+                        it.getInputFieldType() == InputFieldType.AUDIO_RECORDING 
+                    }?.name ?: "register audio"
+                    put(audioFieldName, audioData!!)
+                }
+            }
+            
+            // Determine entity_id: either numeric ID or string name
+            val entityIdValue: JsonElement? = when {
+                selectedEntityId != null -> JsonPrimitive(selectedEntityId)
+                selectedEntityName.isNotBlank() -> JsonPrimitive(selectedEntityName)
+                else -> JsonPrimitive("") // Send empty string instead of null
+            }
+            
+            val createRequest = CreateEntryRequest(
+                begin = beginTime,
+                end = endTime,
+                case_id = caseData.id,
+                entity_id = entityIdValue,
+                inputs = inputs
+            )
+            
+            if (editingEntry != null) {
+                println("AddEntryScreen: Updating entry ${editingEntry.id} for case ${caseData.id}")
+                println("AddEntryScreen: Request: $createRequest")
+                
+                entriesRepository.updateEntry(caseData.id, editingEntry.id, createRequest).collect { result ->
+                    when (result) {
+                        is ApiResult.Loading -> {
+                            isLoading = true
+                        }
+                        is ApiResult.Success -> {
+                            isLoading = false
+                            onEntryCreated() // This callback name is misleading but works for both create and update
+                        }
+                        is ApiResult.Error -> {
+                            isLoading = false
+                            val errorDetails = when (result.exception) {
+                                is AuthError.NetworkError -> "Network error - check internet connection"
+                                is AuthError.InvalidCredentials -> "Authentication error - please login again"
+                                is AuthError.Unknown -> "Error: ${result.exception.message}"
+                                else -> "Error: ${result.exception.message ?: "Unknown error"}"
+                            }
+                            errorMessage = "Failed to update entry: $errorDetails"
+                            println("AddEntryScreen: Entry update failed: $errorDetails")
+                        }
+                    }
+                }
+            } else {
+                println("AddEntryScreen: Creating entry for case ${caseData.id}")
+                println("AddEntryScreen: Request: $createRequest")
+                
+                entriesRepository.createEntry(caseData.id, createRequest).collect { result ->
+                    when (result) {
+                        is ApiResult.Loading -> {
+                            isLoading = true
+                        }
+                        is ApiResult.Success -> {
+                            isLoading = false
+                            onEntryCreated()
+                        }
+                        is ApiResult.Error -> {
+                            isLoading = false
+                            val errorDetails = when (result.exception) {
+                                is AuthError.NetworkError -> "Network error - check internet connection"
+                                is AuthError.InvalidCredentials -> "Authentication error - please login again"
+                                is AuthError.Unknown -> "Error: ${result.exception.message}"
+                                else -> "Error: ${result.exception.message ?: "Unknown error"}"
+                            }
+                            errorMessage = "Failed to create entry: $errorDetails"
+                            println("AddEntryScreen: Entry creation failed: $errorDetails")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Scaffold(
+        modifier = Modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.ime),
+        topBar = {
+            TopAppBar(
+                title = { 
+                    Text(
+                        text = if (editingEntry != null) "Edit Entry" else "Add Entry",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
+                )
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = 16.dp)
+                .verticalScroll(scrollState)
+                .pointerInput(Unit) {
+                    detectTapGestures {
+                        focusManager.clearFocus()
+                    }
+                },
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            TimePickerSection(
+                beginTime = beginTime,
+                endTime = endTime,
+                showBeginDatePicker = showBeginDatePicker,
+                showEndDatePicker = showEndDatePicker,
+                onShowBeginDatePicker = { showBeginDatePicker = it },
+                onShowEndDatePicker = { showEndDatePicker = it }
+            )
+            
+            EntitySelectionSection(
+                availableEntities = availableEntities,
+                actualEntityName = actualEntityName,
+                selectedEntityName = selectedEntityName,
+                onEntitySelected = { name, id ->
+                    selectedEntityName = name
+                    selectedEntityId = id
+                }
+            )
+            
+            CustomInputsSection(
+                customInputs = customInputs,
+                customInputValues = customInputValues
+            )
+            
+            if (hasAudioInput) {
+                AudioRecordingField(
+                    currentAudioData = audioData,
+                    onAudioRecorded = { base64Data ->
+                        audioData = base64Data
+                        println("AddEntryScreen: Audio recorded, length: ${base64Data?.length ?: 0}")
+                    }
+                )
+            }
+            
+            ErrorMessageSection(errorMessage = errorMessage)
+            
+            SaveButtonSection(
+                isLoading = isLoading,
+                selectedEntityName = selectedEntityName,
+                editingEntry = editingEntry,
+                onSave = { createOrUpdateEntry() }
+            )
+            
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
+}
+
+@Composable
+private fun TimePickerSection(
+    paddingValues: PaddingValues,
+    scrollState: ScrollState,
+    focusManager: androidx.compose.ui.focus.FocusManager,
+    beginTime: String,
+    endTime: String,
+    selectedEntityName: String,
+    selectedEntityId: Int?,
+    audioData: String?,
+    isLoading: Boolean,
+    errorMessage: String?,
+    editingEntry: Entry?,
+    showBeginDatePicker: Boolean,
+    showEndDatePicker: Boolean,
+    availableEntities: List<EntityInput>,
+    customInputs: List<InputFieldDefinition>,
+    hasAudioInput: Boolean,
+    customInputValues: SnapshotStateMap<String, JsonElement>,
+    actualEntityName: String,
+    onBeginTimeChange: (String) -> Unit,
+    onEndTimeChange: (String) -> Unit,
+    onSelectedEntityNameChange: (String) -> Unit,
+    onSelectedEntityIdChange: (Int?) -> Unit,
+    onAudioDataChange: (String?) -> Unit,
+    onShowBeginDatePickerChange: (Boolean) -> Unit,
+    onShowEndDatePickerChange: (Boolean) -> Unit,
+    onCreateEntry: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)
+            .verticalScroll(scrollState)
+            .padding(16.dp)
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onTap = { 
+                        focusManager.clearFocus() 
+                    }
+                )
+            },
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        // Time Selection
+        Card {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "Time Period",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                
+                // Begin Time (clickable)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onShowBeginDatePickerChange(true) }
+                ) {
+                    OutlinedTextField(
+                        value = formatTimestampForDisplay(beginTime),
+                        onValueChange = { },
+                        label = { Text("Start Time") },
+                        readOnly = true,
+                        enabled = false,
+                        modifier = Modifier.fillMaxWidth(),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.DateRange,
+                                contentDescription = null
+                            )
+                        },
+                        trailingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit time",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledTrailingIconColor = MaterialTheme.colorScheme.primary,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+                }
+                
+                // End Time (clickable)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onShowEndDatePickerChange(true) }
+                ) {
+                    OutlinedTextField(
+                        value = formatTimestampForDisplay(endTime),
+                        onValueChange = { },
+                        label = { Text("End Time") },
+                        readOnly = true,
+                        enabled = false,
+                        modifier = Modifier.fillMaxWidth(),
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.DateRange,
+                                contentDescription = null
+                            )
+                        },
+                        trailingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit time",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledTrailingIconColor = MaterialTheme.colorScheme.primary,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+                }
+                
+                Text(
+                    text = "Default: 1 hour duration from now",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        
+        // KMP Date and Time Picker for Begin Time
+        if (showBeginDatePicker) {
+            WheelDateTimePickerView(
+                modifier = Modifier.padding(top = 18.dp, bottom = 10.dp).fillMaxWidth(),
+                showDatePicker = showBeginDatePicker,
+                title = "Select Start Date & Time",
+                titleStyle = TextStyle(
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                ),
+                doneLabel = "Confirm",
+                doneLabelStyle = TextStyle(
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight(600),
+                    color = MaterialTheme.colorScheme.primary,
+                ),
+                selectorProperties = WheelPickerDefaults.selectorProperties(
+                    borderColor = MaterialTheme.colorScheme.outline,
+                ),
+                timeFormat = TimeFormat.HOUR_24,
+                dateTextColor = MaterialTheme.colorScheme.primary,
+                rowCount = 5,
+                height = 170.dp,
+                dateTextStyle = TextStyle(
+                    fontWeight = FontWeight(600),
+                ),
+                onDoneClick = { dateTime ->
+                    // Convert to our timestamp format: YYYY-MM-DD HH:mm:ss.000000
+                    val formattedDateTime = dateTimeToString(dateTime, "yyyy-MM-dd HH:mm:ss")
+                    onBeginTimeChange("$formattedDateTime.000000")
+                    onShowBeginDatePickerChange(false)
+                },
+                dateTimePickerView = DateTimePickerView.DIALOG_VIEW,
+                onDismiss = {
+                    onShowBeginDatePickerChange(false)
+                }
+            )
+        }
+        
+        // KMP Date and Time Picker for End Time
+        if (showEndDatePicker) {
+            WheelDateTimePickerView(
+                modifier = Modifier.padding(top = 18.dp, bottom = 10.dp).fillMaxWidth(),
+                showDatePicker = showEndDatePicker,
+                title = "Select End Date & Time",
+                titleStyle = TextStyle(
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                ),
+                doneLabel = "Confirm",
+                doneLabelStyle = TextStyle(
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight(600),
+                    color = MaterialTheme.colorScheme.primary,
+                ),
+                selectorProperties = WheelPickerDefaults.selectorProperties(
+                    borderColor = MaterialTheme.colorScheme.outline,
+                ),
+                timeFormat = TimeFormat.HOUR_24,
+                dateTextColor = MaterialTheme.colorScheme.primary,
+                rowCount = 5,
+                height = 170.dp,
+                dateTextStyle = TextStyle(
+                    fontWeight = FontWeight(600),
+                ),
+                onDoneClick = { dateTime ->
+                    // Convert to our timestamp format: YYYY-MM-DD HH:mm:ss.000000
+                    val formattedDateTime = dateTimeToString(dateTime, "yyyy-MM-dd HH:mm:ss")
+                    onEndTimeChange("$formattedDateTime.000000")
+                    onShowEndDatePickerChange(false)
+                },
+                dateTimePickerView = DateTimePickerView.DIALOG_VIEW,
+                onDismiss = {
+                    onShowEndDatePickerChange(false)
+                }
+            )
+        }
+        
+        // Entity Selection (if available)
+        if (availableEntities.isNotEmpty()) {
+            Card {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = actualEntityName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    
+                    // Simple Entity Text Field (no dropdown)
+                    OutlinedTextField(
+                        value = selectedEntityName,
+                        onValueChange = { newValue ->
+                            onSelectedEntityNameChange(newValue)
+                            onSelectedEntityIdChange(null)
+                        },
+                        label = { Text("${actualEntityName} (optional)") },
+                        placeholder = { Text("Enter ${actualEntityName.lowercase()}") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    // Autocomplete toggle and suggestions
+                    var showSuggestions by remember { mutableStateOf(false) }
+                    val validEntities = availableEntities.filter { it.name.isNotBlank() }
+                    
+                    if (validEntities.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Type custom name for this entry",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            
+                            TextButton(
+                                onClick = { showSuggestions = !showSuggestions }
+                            ) {
+                                Text(
+                                    text = if (showSuggestions) "Hide suggestions" else "Show suggestions",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Icon(
+                                    imageVector = if (showSuggestions) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                        
+                        // Suggestions list
+                        if (showSuggestions) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                validEntities.forEach { entity ->
+                                    Surface(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                onSelectedEntityNameChange(entity.name)
+                                                onSelectedEntityIdChange(entity.id)
+                                                showSuggestions = false
+                                            },
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    ) {
+                                        Text(
+                                            text = entity.name,
+                                            modifier = Modifier.padding(12.dp),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        Text(
+                            text = "Type custom name for this entry",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+        }
+        
+        // Custom Input Fields (Scale, Text, Multiple Choice, etc.)
+        customInputs.filter { it.getInputFieldType() != InputFieldType.AUDIO_RECORDING }.forEach { inputDef ->
+            Card {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Input Label
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = inputDef.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                        if (inputDef.mandatory) {
+                            Text(
+                                text = "*",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
+                    }
+                    
+                    // Render input based on type
+                    when (inputDef.getInputFieldType()) {
+                        InputFieldType.SCALE -> {
+                            ScaleInput(
+                                value = (customInputValues[inputDef.name] as? JsonPrimitive)?.content?.toIntOrNull() ?: 0,
+                                onValueChange = { value ->
+                                    customInputValues[inputDef.name] = JsonPrimitive(value)
+                                }
+                            )
+                        }
+                        InputFieldType.TEXT -> {
+                            OutlinedTextField(
+                                value = (customInputValues[inputDef.name] as? JsonPrimitive)?.content ?: "",
+                                onValueChange = { value ->
+                                    customInputValues[inputDef.name] = JsonPrimitive(value)
+                                },
+                                modifier = Modifier.fillMaxWidth(),
+                                placeholder = { Text("Enter ${inputDef.name}") }
+                            )
+                        }
+                        InputFieldType.ONE_CHOICE -> {
+                            SingleChoiceInput(
+                                options = inputDef.getAvailableOptions(),
+                                selectedOption = (customInputValues[inputDef.name] as? JsonPrimitive)?.content,
+                                onOptionSelected = { option ->
+                                    customInputValues[inputDef.name] = JsonPrimitive(option)
+                                }
+                            )
+                        }
+                        InputFieldType.MULTIPLE_CHOICE -> {
+                            MultipleChoiceInput(
+                                options = inputDef.getAvailableOptions(),
+                                selectedOptions = (customInputValues[inputDef.name] as? JsonArray)?.mapNotNull {
+                                    (it as? JsonPrimitive)?.content
+                                } ?: emptyList(),
+                                onSelectionChange = { selected ->
+                                    customInputValues[inputDef.name] = buildJsonArray {
+                                        selected.forEach { add(JsonPrimitive(it)) }
+                                    }
+                                }
+                            )
+                        }
+                        else -> {} // Audio handled separately
+                    }
+                }
+            }
+        }
+        
+        // Audio Input (if case has audio input fields)
+        if (hasAudioInput) {
+            AudioRecordingField(
+                onAudioRecorded = { recordedAudio ->
+                    onAudioDataChange(recordedAudio)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                initialAudioData = audioData
+            )
+        }
+        
+        // Error message
+        errorMessage?.let { error ->
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                )
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                    Text(
+                        text = error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            }
+        }
+        
+        // Create Button
+        Button(
+            onClick = { onCreateEntry() },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            enabled = !isLoading,
+            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MetagColors.Primary,
+                contentColor = Color.White
+            )
+        ) {
+            if (isLoading) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                    Text(
+                        if (editingEntry != null) "Updating Entry..." else "Creating Entry...",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            } else {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        if (editingEntry != null) "Update Entry" else "Create Entry",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+        
+        // Bottom padding
+        Spacer(modifier = Modifier.height(32.dp))
+    }
+}
+
+@Composable
+fun ScaleInput(
+    value: Int,
+    onValueChange: (Int) -> Unit
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Display current value
+        Text(
+            text = if (value in 1..5) "$value / 5" else "Select a rating",
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (value in 1..5) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        
+        // Scale buttons (1-5)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            (1..5).forEach { rating ->
+                FilledTonalButton(
+                    onClick = { onValueChange(rating) },
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = if (value == rating) 
+                            MaterialTheme.colorScheme.primary 
+                        else 
+                            MaterialTheme.colorScheme.surfaceVariant,
+                        contentColor = if (value == rating)
+                            MaterialTheme.colorScheme.onPrimary
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    modifier = Modifier.weight(1f).padding(horizontal = 2.dp)
+                ) {
+                    Text(
+                        text = rating.toString(),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = if (value == rating) FontWeight.Bold else FontWeight.Normal
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SingleChoiceInput(
+    options: List<String>,
+    selectedOption: String?,
+    onOptionSelected: (String) -> Unit
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        options.forEach { option ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onOptionSelected(option) }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(
+                    selected = selectedOption == option,
+                    onClick = { onOptionSelected(option) }
+                )
+                Text(
+                    text = option,
+                    modifier = Modifier.padding(start = 8.dp),
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun MultipleChoiceInput(
+    options: List<String>,
+    selectedOptions: List<String>,
+    onSelectionChange: (List<String>) -> Unit
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        options.forEach { option ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        val newSelection = if (option in selectedOptions) {
+                            selectedOptions - option
+                        } else {
+                            selectedOptions + option
+                        }
+                        onSelectionChange(newSelection)
+                    }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = option in selectedOptions,
+                    onCheckedChange = { checked ->
+                        val newSelection = if (checked) {
+                            selectedOptions + option
+                        } else {
+                            selectedOptions - option
+                        }
+                        onSelectionChange(newSelection)
+                    }
+                )
+                Text(
+                    text = option,
+                    modifier = Modifier.padding(start = 8.dp),
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+        }
+    }
+}
