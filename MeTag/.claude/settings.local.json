@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew assembleDebug:*)",
+      "Bash(/Users/belli/AndroidStudioProjects/MetagCompose/gradlew assembleDebug)",
+      "Bash(/Users/belli/AndroidStudioProjects/MetagCompose/gradlew:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

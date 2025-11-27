@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+    <!-- App Info -->
+    <string name="app_name">MeTag</string>
+    
+    <!-- Login Screen -->
+    <string name="login_title">Login</string>
+    <string name="login_welcome">Welcome back</string>
+    <string name="login_email">Email</string>
+    <string name="login_password">Password</string>
+    <string name="login_button">Login</string>
+    <string name="login_forgot_password">Forgot Password?</string>
+    <string name="login_or">OR</string>
+    <string name="login_scan_qr">Scan QR Code</string>
+    <string name="login_error">Login failed. Please check your credentials.</string>
+    <string name="offline_indicator">Working offline</string>
+    <string name="show_password">Show password</string>
+    <string name="hide_password">Hide password</string>
+    
+    <!-- Validation -->
+    <string name="validation_required_fields">Please fill in required fields: %s</string>
+    <string name="validation_required">required</string>
+    <string name="validation_optional">optional</string>
+    
+    <!-- Navigation -->
+    <string name="nav_back">Back</string>
+    <string name="nav_close">Close</string>
+    <string name="nav_save">Save</string>
+    <string name="nav_cancel">Cancel</string>
+    
+    <!-- Add/Edit Entry -->
+    <string name="add_entry_title">Add Entry</string>
+    <string name="edit_entry_title">Edit Entry</string>
+    <string name="entry_start_time">Start Time</string>
+    <string name="entry_end_time">End Time</string>
+    <string name="entry_create_button">Create Entry</string>
+    <string name="entry_update_button">Update Entry</string>
+    <string name="entry_creating">Creating Entry...</string>
+    <string name="entry_updating">Updating Entry...</string>
+    
+    <!-- Media/Entity -->
+    <string name="media_field">Media</string>
+    <string name="entity_field">Entity</string>
+    <string name="entity_enter">Enter</string>
+    <string name="entity_suggestions_show">Show suggestions</string>
+    <string name="entity_suggestions_hide">Hide suggestions</string>
+    <string name="entity_custom_note">Type custom name for this entry</string>
+    
+    <!-- Audio -->
+    <string name="audio_recording">Audio Recording</string>
+    <string name="audio_playing">Playing...</string>
+    <string name="audio_ready">Ready</string>
+    <string name="audio_play">Play</string>
+    <string name="audio_stop">Stop</string>
+    <string name="audio_recording_duration">Recording %ds</string>
+    <string name="audio_recording_failed">Recording failed</string>
+    <string name="audio_playback_failed">Playback failed</string>
+    <string name="audio_playing_state">Playing Audio</string>
+    <string name="audio_loading">Loading Audio...</string>
+    <string name="audio_paused">Audio Paused</string>
+    <string name="audio_ready_state">Audio Ready</string>
+    <string name="audio_error">Audio Error</string>
+    <string name="audio_recording_state">Audio Recording</string>
+    
+    <!-- Error Messages -->
+    <string name="error_network">Network error - check internet connection</string>
+    <string name="error_authentication">Authentication error - please login again</string>
+    <string name="error_unknown">Unknown error occurred</string>
+    <string name="error_entry_create">Failed to create entry: %s</string>
+    <string name="error_entry_update">Failed to update entry: %s</string>
+    <string name="error_dismiss">Tap to dismiss</string>
+    
+    <!-- Time Picker -->
+    <string name="time_picker_start_title">Select Start Date &amp; Time</string>
+    <string name="time_picker_end_title">Select End Date &amp; Time</string>
+    <string name="time_picker_save_close">Save &amp; Close</string>
+    
+    <!-- General -->
+    <string name="loading">Loading...</string>
+    <string name="retry">Retry</string>
+    <string name="ok">OK</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    
+    <!-- Scale Input -->
+    <string name="scale_select_rating">Select a rating</string>
+    <string name="scale_rating_format">%d / 5</string>
+    
+    <!-- Case Info -->
+    <string name="entries_title">Entries</string>
+    <string name="entries_count">%d entries</string>
+    <string name="last_day_submit">Last day to submit: </string>
+    
+    <!-- Language Selection -->
+    <string name="language_selection_title">Select Language</string>
+    <string name="language_english">English</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_german">Deutsch</string>
+</resources>

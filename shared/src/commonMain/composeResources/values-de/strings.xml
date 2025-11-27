@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<resources>
+    <!-- App Info -->
+    <string name="app_name">MeTag</string>
+    
+    <!-- Login Screen -->
+    <string name="login_title">Anmelden</string>
+    <string name="login_welcome">Willkommen zurück</string>
+    <string name="login_email">E-Mail</string>
+    <string name="login_password">Passwort</string>
+    <string name="login_button">Anmelden</string>
+    <string name="login_forgot_password">Passwort vergessen?</string>
+    <string name="login_or">ODER</string>
+    <string name="login_scan_qr">QR-Code scannen</string>
+    <string name="login_error">Anmeldung fehlgeschlagen. Bitte überprüfen Sie Ihre Anmeldedaten.</string>
+    <string name="offline_indicator">Offline arbeiten</string>
+    
+    <!-- Validation -->
+    <string name="validation_required_fields">Bitte füllen Sie die erforderlichen Felder aus: %s</string>
+    <string name="validation_required">erforderlich</string>
+    <string name="validation_optional">optional</string>
+    
+    <!-- Navigation -->
+    <string name="nav_back">Zurück</string>
+    <string name="nav_close">Schließen</string>
+    <string name="nav_save">Speichern</string>
+    <string name="nav_cancel">Abbrechen</string>
+    
+    <!-- Add/Edit Entry -->
+    <string name="add_entry_title">Eintrag hinzufügen</string>
+    <string name="edit_entry_title">Eintrag bearbeiten</string>
+    <string name="entry_start_time">Startzeit</string>
+    <string name="entry_end_time">Endzeit</string>
+    <string name="entry_create_button">Eintrag erstellen</string>
+    <string name="entry_update_button">Eintrag aktualisieren</string>
+    <string name="entry_creating">Eintrag wird erstellt...</string>
+    <string name="entry_updating">Eintrag wird aktualisiert...</string>
+    
+    <!-- Media/Entity -->
+    <string name="media_field">Medien</string>
+    <string name="entity_field">Entität</string>
+    <string name="entity_enter">Eingeben</string>
+    <string name="entity_suggestions_show">Vorschläge anzeigen</string>
+    <string name="entity_suggestions_hide">Vorschläge ausblenden</string>
+    <string name="entity_custom_note">Benutzerdefinierten Namen für diesen Eintrag eingeben</string>
+    
+    <!-- Audio -->
+    <string name="audio_recording">Audioaufnahme</string>
+    <string name="audio_playing">Wiedergabe...</string>
+    <string name="audio_ready">Bereit</string>
+    <string name="audio_play">Abspielen</string>
+    <string name="audio_stop">Stoppen</string>
+    <string name="audio_recording_duration">Aufnahme %ds</string>
+    <string name="audio_recording_failed">Aufnahme fehlgeschlagen</string>
+    <string name="audio_playback_failed">Wiedergabe fehlgeschlagen</string>
+    <string name="audio_playing_state">Audio abspielen</string>
+    
+    <!-- Error Messages -->
+    <string name="error_network">Netzwerkfehler - Internetverbindung prüfen</string>
+    <string name="error_authentication">Authentifizierungsfehler - bitte erneut anmelden</string>
+    <string name="error_unknown">Unbekannter Fehler aufgetreten</string>
+    <string name="error_entry_create">Fehler beim Erstellen des Eintrags: %s</string>
+    <string name="error_entry_update">Fehler beim Aktualisieren des Eintrags: %s</string>
+    <string name="error_dismiss">Zum Schließen tippen</string>
+    
+    <!-- Time Picker -->
+    <string name="time_picker_start_title">Startdatum und -zeit auswählen</string>
+    <string name="time_picker_end_title">Enddatum und -zeit auswählen</string>
+    <string name="time_picker_save_close">Speichern &amp; Schließen</string>
+    
+    <!-- General -->
+    <string name="loading">Lädt...</string>
+    <string name="retry">Wiederholen</string>
+    <string name="ok">OK</string>
+    <string name="yes">Ja</string>
+    <string name="no">Nein</string>
+    
+    <!-- Scale Input -->
+    <string name="scale_select_rating">Bewertung auswählen</string>
+    <string name="scale_rating_format">%d / 5</string>
+    
+    <!-- Case Info -->
+    <string name="entries_title">Einträge</string>
+    <string name="entries_count">%d Einträge</string>
+    <string name="last_day_submit">Letzter Tag der Einreichung: </string>
+    
+    <!-- Language Selection -->
+    <string name="language_selection_title">Sprache auswählen</string>
+    <string name="language_english">English</string>
+    <string name="language_italian">Italiano</string>
+    <string name="language_german">Deutsch</string>
+</resources>
