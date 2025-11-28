@@ -164,15 +164,8 @@ class QRScannerCoordinator: NSObject, DataScannerViewControllerDelegate {
     // MARK: - Validation
 
     private func isValidMeTagQRCode(_ value: String) -> Bool {
-        // Check for metagapp:// scheme
-        if value.hasPrefix("metagapp://login") {
-            return true
-        }
-        // Check for HTTPS URL with qr-login path
-        if value.contains("/qr-login") {
-            return true
-        }
-        return false
+        // Only accept metagapp:// custom scheme
+        return value.hasPrefix("metagapp://login")
     }
 
     private func extractToken(from urlString: String) -> String? {

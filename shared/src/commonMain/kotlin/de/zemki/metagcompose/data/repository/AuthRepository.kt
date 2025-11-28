@@ -173,15 +173,34 @@ class AuthRepository(
         emit(ApiResult.Loading)
 
         try {
+            // Initialize notification manager and get device token for push notifications
+            val deviceToken = try {
+                notificationManager.initialize()
+                notificationManager.getDeviceToken()
+            } catch (e: Exception) {
+                AppLogger.d("Failed to get device token for QR login: ${e.message}", tag = "AuthRepository")
+                null
+            }
+
+            AppLogger.d("Device token for QR login: ${deviceToken?.take(20)}...", tag = "AuthRepository")
+
             // Clean baseUrl and auto-upgrade HTTP to HTTPS (defensive against nginx redirects)
             val cleanBaseUrl = baseUrl.trimEnd('/')
                 .replace(Regex("^http://"), "https://")
             val fullUrl = "$cleanBaseUrl/api/qr-login"
             AppLogger.d("Attempting QR login to: $fullUrl (auto-upgraded to HTTPS)", tag = "AuthRepository")
 
+            val requestBody = mutableMapOf<String, String>("token" to token)
+            if (deviceToken != null) {
+                requestBody["deviceID"] = deviceToken
+            } else {
+                requestBody["deviceID"] = generateDeviceId()
+            }
+            AppLogger.d("QR login deviceID: ${requestBody["deviceID"]?.take(20)}...", tag = "AuthRepository")
+
             val response: HttpResponse = httpClient.post(fullUrl) {
                 contentType(ContentType.Application.Json)
-                setBody(mapOf("token" to token))
+                setBody(requestBody)
                 headers {
                     append("Accept", "application/json")
                     append("ngrok-skip-browser-warning", "true")

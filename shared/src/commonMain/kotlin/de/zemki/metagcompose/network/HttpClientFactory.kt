@@ -14,6 +14,7 @@ fun createBaseHttpClient(): HttpClient {
             json(Json {
                 ignoreUnknownKeys = true
                 isLenient = true
+                encodeDefaults = true  // Always include fields even if they match default value
             })
         }
         

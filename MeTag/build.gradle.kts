@@ -20,8 +20,8 @@ android {
         applicationId = "de.unibremen.metag"
         minSdk = 24
         targetSdk = 35
-        versionCode = 32
-        versionName = "2.0"
+        versionCode = 33
+        versionName = "2.0.1"
     }
     signingConfigs {
         create("release") {

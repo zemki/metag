@@ -58,27 +58,14 @@ class MainActivity : ComponentActivity() {
 
     /**
      * Extract QR token from deep link and store it for LoginViewModel.
-     * Supports both custom scheme (metagapp://login?token=xxx) and HTTPS URLs.
+     * Handles custom scheme: metagapp://login?token=xxx
      */
     private fun handleDeepLink(intent: Intent?) {
         val data: Uri? = intent?.data
-        if (data != null) {
-            // Check if this is a QR login link
-            when {
-                // Custom scheme: metagapp://login?token=xxx
-                data.scheme == "metagapp" && data.host == "login" -> {
-                    val token = data.getQueryParameter("token")
-                    if (token != null) {
-                        DeepLinkHandler.setQrToken(token)
-                    }
-                }
-                // HTTPS URL: https://metag-analyze.test/qr-login?token=xxx
-                data.scheme == "https" && data.path == "/qr-login" -> {
-                    val token = data.getQueryParameter("token")
-                    if (token != null) {
-                        DeepLinkHandler.setQrToken(token)
-                    }
-                }
+        if (data != null && data.scheme == "metagapp" && data.host == "login") {
+            val token = data.getQueryParameter("token")
+            if (token != null) {
+                DeepLinkHandler.setQrToken(token)
             }
         }
     }

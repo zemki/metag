@@ -34,16 +34,6 @@
                       android:host="login" />
             </intent-filter>
 
-            <!-- Deep Link: HTTPS URLs (App Links) -->
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="https"
-                      android:host="metag-analyze.test"
-                      android:pathPrefix="/qr-login" />
-            </intent-filter>
         </activity>
 
         <!-- Firebase Cloud Messaging Service -->
